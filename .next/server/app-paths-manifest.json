@@ -1,0 +1,14 @@
+{
+  "/teachers/page": "app/teachers/page.js",
+  "/generate/page": "app/generate/page.js",
+  "/classes/page": "app/classes/page.js",
+  "/api/classes/route": "app/api/classes/route.js",
+  "/view/page": "app/view/page.js",
+  "/api/sections/route": "app/api/sections/route.js",
+  "/api/routines/route": "app/api/routines/route.js",
+  "/api/teachers/route": "app/api/teachers/route.js",
+  "/api/routines/generate/route": "app/api/routines/generate/route.js",
+  "/api/subjects/route": "app/api/subjects/route.js",
+  "/api/class-teachers/route": "app/api/class-teachers/route.js",
+  "/api/teacher-subjects/route": "app/api/teacher-subjects/route.js"
+}
