@@ -1,8 +1,11 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { FiSearch, FiX, FiUsers, FiCalendar } from "react-icons/fi"
+import { toast } from "sonner"
+import { FiSearch, FiX, FiUsers, FiCalendar, FiDownload } from "react-icons/fi"
 import { DAYS, DAYS_SHORT, PERIOD_START_TIMES, getCategoryColor } from "@/lib/types"
+import html2canvas from "html2canvas"
+import jsPDF from "jspdf"
 
 export default function ViewPage() {
   const [classes, setClasses] = useState<any[]>([])
@@ -108,6 +111,56 @@ export default function ViewPage() {
   }, [classSections, allRoutines, periodsCount])
 
   const hasSearchResults = highlightTeacherIds.size > 0
+  const [isDownloading, setIsDownloading] = useState(false)
+
+  const downloadPDF = async () => {
+    setIsDownloading(true)
+    const activeSec = classSections.find((s: any) => activeTab === String(s.id))
+    const className = selectedClass?.display_name || ""
+    const secName = activeSec ? `Section ${activeSec.name}` : ""
+    try {
+      const tableEl = document.querySelector<HTMLElement>(`[data-pdf-table="${activeTab}"]`)
+      if (!tableEl) { toast.error("No routine table found"); return }
+
+      const container = document.createElement("div")
+      container.style.cssText = "position:absolute;left:-9999px;top:0;width:1100px;background:white;padding:24px 24px 12px;font-family: Inter, system-ui, sans-serif;"
+
+      container.innerHTML = `
+        <div style="text-align:center;margin-bottom:16px;">
+          <h2 style="font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#1e293b;margin:0 0 2px;">Cantonment Public School &amp; College, Rangpur</h2>
+          <p style="font-size:11px;color:#64748b;margin:0;">Class Routine &mdash; ${className} &mdash; ${secName}</p>
+        </div>
+      `
+
+      const clone = tableEl.cloneNode(true) as HTMLElement
+      clone.style.cssText = "width:100%;border-collapse:collapse;"
+      clone.querySelectorAll('[data-ct-badge]').forEach(el => el.remove())
+      container.appendChild(clone)
+      document.body.appendChild(container)
+
+      // Wait for fonts/layout
+      await new Promise(r => setTimeout(r, 200))
+
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+      })
+
+      document.body.removeChild(container)
+      const imgData = canvas.toDataURL("image/png")
+      const pdf = new jsPDF("l", "mm", "a4")
+      const pdfWidth = pdf.internal.pageSize.getWidth()
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight)
+      pdf.save(`${className}_${secName}_Routine.pdf`.replace(/\s+/g, "_"))
+    } catch {
+      toast.error("Failed to generate PDF")
+    } finally {
+      setIsDownloading(false)
+    }
+  }
 
   function getRoutine(routinesList: any[], day: number, period: number) {
     return routinesList.find((r: any) => r.day_of_week === day && r.period_number === period)
@@ -174,12 +227,12 @@ export default function ViewPage() {
                         <td
                           key={dayIdx}
                           className={`p-1 border border-slate-200 align-top ${
-                            highlighted ? "bg-blue-50" : "bg-white"
+                            highlighted ? "bg-blue-50" : routine?.is_class_teacher_period ? "bg-amber-50/60" : "bg-white"
                           }`}
                         >
                           {routine ? (
                             <div className="flex flex-col min-h-[48px]">
-                              <div className={`h-1 rounded-t mb-1 ${catColor}`} />
+                              <div className={`h-1 rounded-t mb-1 ${catColor} ${routine.is_class_teacher_period ? "bg-amber-400" : catColor}`} />
                               <span className={`text-[12px] font-bold leading-tight px-1 ${
                                 highlighted ? "text-blue-900" : "text-slate-800"
                               }`}>
@@ -189,7 +242,7 @@ export default function ViewPage() {
                                 {routine.subjects?.name}
                               </span>
                               {routine.is_class_teacher_period && (
-                                <span className="text-[9px] font-medium text-slate-400 border border-slate-200 rounded px-1.5 py-0.5 leading-none self-start mt-1 ml-1">
+                                <span data-ct-badge className="text-[9px] font-semibold text-white bg-blue-600 rounded-full px-2 py-0.5 leading-none self-start mt-1 ml-1">
                                   Class Teacher
                                 </span>
                               )}
@@ -331,25 +384,35 @@ export default function ViewPage() {
                 const stats = sectionStats[sec.id]
 
                 return (
-                  <div key={sec.id} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                  <div key={sec.id} className="bg-white rounded-xl border border-slate-200">
                     {/* Card header */}
                     <div className="px-4 sm:px-5 py-3 border-b border-slate-100">
                       <div className="flex items-center justify-between flex-wrap gap-2">
                         <h3 className="font-semibold text-slate-800 text-sm sm:text-base">
                           {selectedClass?.display_name} — Section {sec.name}
                         </h3>
-                        {stats && (
-                          <div className="flex items-center gap-3 text-xs text-slate-400">
-                            <span className="flex items-center gap-1">
-                              <FiUsers size={13} />
-                              {stats.teacherCount} teachers
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <FiCalendar size={13} />
-                              {stats.filledCount}/{stats.totalSlots} filled
-                            </span>
-                          </div>
-                        )}
+                        <div className="flex items-center gap-3">
+                          {stats && (
+                            <div className="flex items-center gap-3 text-xs text-slate-400">
+                              <span className="flex items-center gap-1">
+                                <FiUsers size={13} />
+                                {stats.teacherCount} teachers
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <FiCalendar size={13} />
+                                {stats.filledCount}/{stats.totalSlots} filled
+                              </span>
+                            </div>
+                          )}
+                          <button
+                            onClick={downloadPDF}
+                            disabled={isDownloading}
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-500 border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-slate-700 transition-colors disabled:opacity-50"
+                          >
+                            <FiDownload size={13} />
+                            {isDownloading ? "..." : "PDF"}
+                          </button>
+                        </div>
                       </div>
                     </div>
 
@@ -360,7 +423,9 @@ export default function ViewPage() {
                           <p className="text-sm">No routine generated yet for this section</p>
                         </div>
                       ) : (
-                        renderRoutineTable(secRoutines)
+                        <div data-pdf-table={sec.id}>
+                          {renderRoutineTable(secRoutines)}
+                        </div>
                       )}
                     </div>
                   </div>

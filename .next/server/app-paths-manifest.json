@@ -1,7 +1,6 @@
 {
-  "/_not-found/page": "app/_not-found/page.js",
-  "/generate/page": "app/generate/page.js",
   "/view/page": "app/view/page.js",
-  "/classes/page": "app/classes/page.js",
-  "/teachers/page": "app/teachers/page.js"
+  "/api/classes/route": "app/api/classes/route.js",
+  "/api/sections/route": "app/api/sections/route.js",
+  "/api/routines/route": "app/api/routines/route.js"
 }
