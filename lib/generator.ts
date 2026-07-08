@@ -93,12 +93,27 @@ export async function generateRoutine(classId: number) {
     .filter(([_, subjects]) => Object.values(subjects).some(v => v > 0))
     .map(([id]) => parseInt(id))
 
+  const { data: existingRoutines } = await supabase
+    .from("routines")
+    .select("teacher_id, day_of_week, period_number")
+    .in("teacher_id", activeTeacherIds)
+
+  const MAX_PERIODS = 8
+  const BREAK_PERIOD = 5
   for (const tid of activeTeacherIds) {
     teacherBusy[tid] = {}
     for (const day of DAYS) {
       teacherBusy[tid][day] = {}
-      for (let period = 1; period <= periodsCount; period++) {
+      for (let period = 1; period <= MAX_PERIODS; period++) {
         teacherBusy[tid][day][period] = false
+      }
+    }
+  }
+
+  if (existingRoutines) {
+    for (const r of existingRoutines) {
+      if (teacherBusy[r.teacher_id]?.[r.day_of_week]?.[r.period_number] !== undefined) {
+        teacherBusy[r.teacher_id][r.day_of_week][r.period_number] = true
       }
     }
   }
@@ -205,6 +220,7 @@ export async function generateRoutine(classId: number) {
   for (const section of sections) {
     for (const day of DAYS) {
       for (let period = 1; period <= periodsCount; period++) {
+        if (period === BREAK_PERIOD) continue
         if (routineGrid[section.id][day][period]) continue
 
         const prevTeacherId = period > 1 ? routineGrid[section.id][day][period - 1]?.teacher_id : undefined
@@ -236,6 +252,7 @@ export async function generateRoutine(classId: number) {
   for (const section of sections) {
     for (const day of DAYS) {
       for (let period = 1; period < periodsCount; period++) {
+        if (period === BREAK_PERIOD || period + 1 === BREAK_PERIOD) continue
         const current = routineGrid[section.id][day][period]
         const next = routineGrid[section.id][day][period + 1]
         if (!current || !next) continue
@@ -268,6 +285,7 @@ export async function generateRoutine(classId: number) {
       const p1 = routineGrid[section.id][day][1]
       if (p1 && p1.teacher_id === ctId) continue
       for (let period = 2; period <= periodsCount; period++) {
+        if (period === BREAK_PERIOD) continue
         const slot = routineGrid[section.id][day][period]
         if (slot && slot.teacher_id === ctId && p1) {
           if (!teacherBusy[p1.teacher_id]?.[day]?.[period] && !teacherBusy[ctId]?.[day]?.[1]) {
@@ -286,6 +304,7 @@ export async function generateRoutine(classId: number) {
   for (const section of sections) {
     for (const day of DAYS) {
       for (let period = 1; period <= periodsCount; period++) {
+        if (period === BREAK_PERIOD) continue
         totalSlots++
         if (routineGrid[section.id][day][period]) filledSlots++
       }
@@ -313,6 +332,7 @@ export async function generateRoutine(classId: number) {
   for (const section of sections) {
     for (const day of DAYS) {
       for (let period = 1; period <= periodsCount; period++) {
+        if (period === BREAK_PERIOD) continue
         const slot = routineGrid[section.id][day][period]
         if (slot) {
           routineInserts.push({

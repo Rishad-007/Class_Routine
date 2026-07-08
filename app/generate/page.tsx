@@ -1,9 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { FiRefreshCw, FiCheckCircle, FiAlertTriangle, FiUsers } from "react-icons/fi"
+import { FiRefreshCw, FiCheckCircle, FiAlertTriangle, FiUsers, FiLayers } from "react-icons/fi"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { RoutineTable } from "@/components/generate/routine-table"
+import { toast } from "sonner"
 
 const CLASS_NAMES = ["Six", "Seven", "Eight", "Nine", "Ten"]
 
@@ -13,10 +14,13 @@ export default function GeneratePage() {
   const [teachers, setTeachers] = useState<any[]>([])
   const [selectedClassId, setSelectedClassId] = useState<number | null>(null)
   const [routines, setRoutines] = useState<any[]>([])
+  const [conflicts, setConflicts] = useState<Record<string, string[]>>({})
+  const [teacherSubjects, setTeacherSubjects] = useState<any[]>([])
   const [generating, setGenerating] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [metrics, setMetrics] = useState<any>(null)
+  const [generationMessages, setGenerationMessages] = useState<{ type: "error" | "warning" | "info"; message: string }[]>([])
 
   const fetchData = async () => {
     setLoading(true)
@@ -38,22 +42,42 @@ export default function GeneratePage() {
 
   const fetchRoutines = async (classId: number) => {
     try {
-      const res = await fetch(`/api/routines?class_id=${classId}`)
+      const [res, valRes, tsRes] = await Promise.all([
+        fetch(`/api/routines?class_id=${classId}`),
+        fetch(`/api/routines/validate?class_id=${classId}`),
+        fetch(`/api/subjects?class_id=${classId}`).then(() =>
+          fetch(`/api/teacher-subjects`).then(r => r.json())
+        ).catch(() => []),
+      ])
       if (res.ok) {
         const data = await res.json()
         setRoutines(data.routines || [])
+      }
+      if (valRes.ok) {
+        const valData = await valRes.json()
+        setConflicts(valData.conflicts || {})
+      }
+      if (Array.isArray(tsRes)) {
+        setTeacherSubjects(tsRes)
       }
     } catch {}
   }
 
   useEffect(() => {
-    if (selectedClassId) fetchRoutines(selectedClassId)
+    if (selectedClassId) {
+      setMetrics(null)
+      setGenerationMessages([])
+      setError("")
+      fetchRoutines(selectedClassId)
+    }
   }, [selectedClassId])
 
   const handleGenerate = async () => {
     if (!selectedClassId) return
     setGenerating(true)
+    setError("")
     setMetrics(null)
+    setGenerationMessages([])
     try {
       const res = await fetch("/api/routines/generate", {
         method: "POST",
@@ -63,7 +87,42 @@ export default function GeneratePage() {
       if (!res.ok) throw new Error((await res.json()).error || "Generation failed")
       const data = await res.json()
       setMetrics(data.metrics || null)
+      const msgs: { type: "error" | "warning" | "info"; message: string }[] = []
+      if (data.metrics?.gapSlots > 0) {
+        msgs.push({ type: "warning", message: data.metrics.message })
+      }
+      if (data.metrics?.message && data.metrics.gapSlots === 0) {
+        msgs.push({ type: "info", message: data.metrics.message })
+      }
+      setGenerationMessages(msgs)
       await fetchRoutines(selectedClassId)
+    } catch (err: any) { setError(err.message) }
+    finally { setGenerating(false) }
+  }
+
+  const handleGenerateAll = async () => {
+    if (!classes.length) return
+    setGenerating(true)
+    setError("")
+    setMetrics(null)
+    setGenerationMessages([])
+    try {
+      const res = await fetch("/api/routines/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ generate_all: true }),
+      })
+      if (!res.ok) throw new Error((await res.json()).error || "Generation failed")
+      const data = await res.json()
+      const totalFilled = data.results.reduce((sum: number, r: any) => sum + r.metrics.filledSlots, 0)
+      const totalSlots = data.results.reduce((sum: number, r: any) => sum + r.metrics.totalSlots, 0)
+      setGenerationMessages([{ type: "info", message: `All classes generated — ${totalFilled}/${totalSlots} slots filled` }])
+      data.results.forEach((r: any) => {
+        if (r.metrics?.gapSlots > 0) {
+          setGenerationMessages(prev => [...prev, { type: "warning", message: `${r.class_name}: ${r.metrics.message}` }])
+        }
+      })
+      if (selectedClassId) await fetchRoutines(selectedClassId)
     } catch (err: any) { setError(err.message) }
     finally { setGenerating(false) }
   }
@@ -75,7 +134,7 @@ export default function GeneratePage() {
 
   const classSections = getClassSections()
   const selectedClass = classes.find((c: any) => c.id === selectedClassId)
-  const periodsCount = selectedClass?.periods_count || 7
+  const periodsCount = selectedClass?.periods_count || 8
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -84,20 +143,30 @@ export default function GeneratePage() {
           <h1 className="text-3xl font-bold text-slate-900">Generate Routine</h1>
           <p className="text-slate-500 mt-1">Generate and edit class routines</p>
         </div>
-        <button
-          onClick={handleGenerate}
-          disabled={generating || !selectedClassId}
-          className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 hover:shadow-md transition-all disabled:opacity-50"
-        >
-          <FiRefreshCw className={generating ? "animate-spin" : ""} size={16} />
-          {generating ? "Generating..." : "Generate Routine"}
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleGenerate}
+            disabled={generating || !selectedClassId}
+            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 hover:shadow-md transition-all disabled:opacity-50"
+          >
+            <FiRefreshCw className={generating ? "animate-spin" : ""} size={16} />
+            {generating ? "Generating..." : "Generate Routine"}
+          </button>
+          <button
+            onClick={handleGenerateAll}
+            disabled={generating || classes.length === 0}
+            className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-white px-4 py-2.5 text-sm font-medium text-blue-700 shadow-sm hover:bg-blue-50 hover:shadow-md transition-all disabled:opacity-50"
+          >
+            <FiLayers size={16} />
+            Generate All
+          </button>
+        </div>
       </div>
 
       {error && <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-800 text-sm mb-6">{error}</div>}
 
       {metrics && (
-        <div className={`rounded-xl border p-4 mb-6 text-sm ${metrics.gapSlots > 0 ? "border-amber-200 bg-amber-50" : "border-emerald-200 bg-emerald-50"}`}>
+        <div className={`rounded-xl border p-4 mb-4 text-sm ${metrics.gapSlots > 0 ? "border-amber-200 bg-amber-50" : "border-emerald-200 bg-emerald-50"}`}>
           <div className="flex items-center gap-6 flex-wrap">
             <div className="flex items-center gap-2">
               {metrics.gapSlots > 0
@@ -113,14 +182,27 @@ export default function GeneratePage() {
               <span><strong>{metrics.teacherCount}</strong> teachers · <strong>{metrics.sectionsCount}</strong> sections</span>
             </div>
           </div>
-          {metrics.gapSlots > 0 && (
-            <p className="mt-2 text-amber-700">{metrics.message}</p>
-          )}
           <div className="mt-2 w-full bg-white/60 rounded-full h-1.5">
             <div
               className={`h-1.5 rounded-full transition-all ${metrics.gapSlots > 0 ? "bg-amber-400" : "bg-emerald-400"}`}
               style={{ width: `${Math.round(metrics.filledSlots / metrics.totalSlots * 100)}%` }}
             />
+          </div>
+        </div>
+      )}
+
+      {generationMessages.length > 0 && (
+        <div className="rounded-xl border border-slate-200 bg-white p-4 mb-6 text-sm shadow-sm">
+          <h4 className="font-semibold text-slate-700 mb-2 flex items-center gap-2">
+            <FiAlertTriangle size={14} className="text-amber-500" />
+            Generation Messages
+          </h4>
+          <div className="space-y-1">
+            {generationMessages.map((m, i) => (
+              <div key={i} className={`text-xs ${m.type === "error" ? "text-red-600" : m.type === "warning" ? "text-amber-700" : "text-emerald-700"}`}>
+                {m.message}
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -175,6 +257,11 @@ export default function GeneratePage() {
                         routines={routines.filter((r: any) => r.section_id === sec.id)}
                         periodsCount={periodsCount}
                         allTeachers={teachers}
+                        allRoutines={routines}
+                        allSections={classSections}
+                        teacherSubjects={teacherSubjects}
+                        conflicts={conflicts}
+                        selectedClassId={selectedClassId!}
                         onRoutineUpdated={() => fetchRoutines(selectedClassId!)}
                       />
                     </div>

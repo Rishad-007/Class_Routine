@@ -18,3 +18,54 @@ export async function GET(request: Request) {
   if (error) return Response.json({ error: error.message }, { status: 500 })
   return Response.json({ routines: data || [] })
 }
+
+export async function POST(request: Request) {
+  if (!isConfigured()) return notConfiguredResponse()
+  try {
+    const body = await request.json()
+    const { section_id, day_of_week, period_number, teacher_id } = body
+    if (!section_id || day_of_week === undefined || !period_number || !teacher_id) {
+      return Response.json({ error: "Missing required fields" }, { status: 400 })
+    }
+
+    // Auto-detect subject from teacher_subjects for this section's class
+    const { data: sec } = await supabase.from("sections").select("class_id").eq("id", section_id).single()
+    let subjectId = body.subject_id
+    if (!subjectId && sec) {
+      const { data: ts } = await supabase
+        .from("teacher_subjects")
+        .select("subject_id")
+        .eq("teacher_id", teacher_id)
+        .eq("class_id", sec.class_id)
+        .limit(1)
+      if (ts && ts.length > 0) subjectId = ts[0].subject_id
+    }
+    if (!subjectId) {
+      return Response.json({ error: "Teacher has no subjects assigned for this class" }, { status: 400 })
+    }
+
+    const { data, error } = await supabase
+      .from("routines")
+      .insert({
+        section_id,
+        day_of_week,
+        period_number,
+        teacher_id,
+        subject_id: subjectId,
+        is_class_teacher_period: false,
+      })
+      .select("*, teachers(*), subjects(*)")
+      .single()
+
+    if (error) {
+      if (error.code === "23505") {
+        return Response.json({ error: "Slot already occupied" }, { status: 409 })
+      }
+      return Response.json({ error: error.message }, { status: 500 })
+    }
+
+    return Response.json({ routine: data }, { status: 201 })
+  } catch (error: any) {
+    return Response.json({ error: error.message || "Failed to create routine" }, { status: 500 })
+  }
+}

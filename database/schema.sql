@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS routines (
   id SERIAL PRIMARY KEY,
   section_id INTEGER NOT NULL REFERENCES sections(id) ON DELETE CASCADE,
   day_of_week SMALLINT NOT NULL CHECK (day_of_week BETWEEN 0 AND 4),
-  period_number SMALLINT NOT NULL CHECK (period_number BETWEEN 1 AND 7),
+  period_number SMALLINT NOT NULL CHECK (period_number BETWEEN 1 AND 8),
   teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
   subject_id INTEGER NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
   is_class_teacher_period BOOLEAN DEFAULT FALSE,
@@ -118,11 +118,11 @@ CREATE POLICY "Allow all" ON routines FOR ALL USING (true) WITH CHECK (true);
 
 -- Classes
 INSERT INTO classes (name, display_name, periods_count, sort_order) VALUES
-  ('Six', 'Class 6', 6, 1),
-  ('Seven', 'Class 7', 6, 2),
-  ('Eight', 'Class 8', 6, 3),
-  ('Nine', 'Class 9', 7, 4),
-  ('Ten', 'Class 10', 7, 5)
+  ('Six', 'Class 6', 7, 1),
+  ('Seven', 'Class 7', 7, 2),
+  ('Eight', 'Class 8', 7, 3),
+  ('Nine', 'Class 9', 8, 4),
+  ('Ten', 'Class 10', 8, 5)
 ON CONFLICT (name) DO NOTHING;
 
 -- Core Subjects (6-10)
