@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { toast } from "sonner"
 import { FiPlus, FiTrash2, FiRefreshCw } from "react-icons/fi"
 
 const CLASS_DEFS = [
@@ -75,18 +76,21 @@ export default function ClassesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ class_id: addingForClassId, name: sectionName.trim().toUpperCase() }),
       })
-      if (!res.ok) throw new Error((await res.json()).error || "Failed")
+      if (!res.ok) {
+        const errData = await res.json()
+        throw new Error(errData.error || "Failed")
+      }
       setSectionName("")
       setAddingForClassId(null)
       fetchData()
-    } catch (err: any) { alert(err.message) }
+    } catch (err: any) { toast.error(err.message) }
   }
 
   const deleteSection = async (id: number) => {
     try {
       await fetch(`/api/sections?id=${id}`, { method: "DELETE" })
       fetchData()
-    } catch (err: any) { alert(err.message) }
+    } catch (err: any) { toast.error(err.message) }
   }
 
   const getSectionsForClass = (classId: number) => sections.filter((s: any) => s.class_id === classId)
@@ -118,9 +122,9 @@ export default function ClassesPage() {
             const isAdding = addingForClassId === dbClass.id
             return (
               <div key={dbClass.id} className="rounded-xl border bg-white overflow-hidden">
-                <div className="bg-gradient-to-r from-purple-600 to-pink-500 p-4">
+                <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-4">
                   <h2 className="text-lg font-bold text-white">{dbClass.display_name}</h2>
-                  <p className="text-purple-200 text-sm">{secs.length} section{secs.length !== 1 ? "s" : ""}</p>
+                  <p className="text-blue-200 text-sm">{secs.length} section{secs.length !== 1 ? "s" : ""}</p>
                 </div>
                 <div className="p-4">
                   {secs.length === 0 ? (
@@ -142,20 +146,20 @@ export default function ClassesPage() {
                   {isAdding ? (
                     <div className="flex gap-2">
                       <input
-                        className="flex-1 rounded-md border border-slate-200 px-3 py-1.5 text-sm outline-none focus:border-purple-400"
+                        className="flex-1 rounded-md border border-slate-200 px-3 py-1.5 text-sm outline-none focus:border-blue-400"
                         placeholder="e.g., A"
                         value={sectionName}
                         onChange={(e) => setSectionName(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && addSection()}
                         autoFocus
                       />
-                      <button onClick={addSection} className="px-3 py-1.5 bg-purple-600 text-white rounded-md text-sm hover:bg-purple-700 transition-colors">Add</button>
+                      <button onClick={addSection} className="px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition-colors">Add</button>
                       <button onClick={() => { setAddingForClassId(null); setSectionName("") }} className="px-3 py-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors">Cancel</button>
                     </div>
                   ) : (
                     <button
                       onClick={() => { setAddingForClassId(dbClass.id); setSectionName("") }}
-                      className="w-full flex items-center justify-center gap-2 px-3 py-2 border-2 border-dashed border-slate-200 rounded-lg text-sm text-slate-400 hover:border-purple-300 hover:text-purple-500 transition-all"
+                      className="w-full flex items-center justify-center gap-2 px-3 py-2 border-2 border-dashed border-slate-200 rounded-lg text-sm text-slate-400 hover:border-blue-300 hover:text-blue-500 transition-all"
                     >
                       <FiPlus size={16} /> Add Section
                     </button>

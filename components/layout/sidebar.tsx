@@ -30,7 +30,7 @@ export function Sidebar() {
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 w-64 bg-gradient-to-b from-slate-900 via-purple-900 to-slate-900 text-white transform transition-transform duration-200 ease-in-out lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-40 w-64 bg-gradient-to-b from-slate-900 to-slate-800 text-white transform transition-transform duration-200 ease-in-out lg:translate-x-0",
           open ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -41,7 +41,7 @@ export function Sidebar() {
               <br />
               School & College
             </h1>
-            <p className="text-xs text-purple-300 mt-1">Rangpur</p>
+            <p className="text-xs text-blue-300 mt-1">Rangpur</p>
           </div>
 
           <nav className="flex-1 p-4 space-y-1">
@@ -57,7 +57,7 @@ export function Sidebar() {
                     "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
                     active
                       ? "bg-white/10 text-white"
-                      : "text-purple-200 hover:text-white hover:bg-white/5"
+                      : "text-slate-300 hover:text-white hover:bg-white/5"
                   )}
                 >
                   <Icon size={18} />
@@ -68,7 +68,7 @@ export function Sidebar() {
           </nav>
 
           <div className="p-4 border-t border-white/10">
-            <p className="text-xs text-purple-300">Routine Generator v1.0</p>
+            <p className="text-xs text-blue-300">Routine Generator v1.0</p>
           </div>
         </div>
       </aside>

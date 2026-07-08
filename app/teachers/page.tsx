@@ -78,7 +78,7 @@ export default function TeachersPage() {
                   <tr key={teacher.id} className="border-b border-slate-100">
                     <td className="p-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white text-xs font-bold">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold">
                           {teacher.name.charAt(0)}
                         </div>
                         <span className="font-medium">{teacher.name}</span>
@@ -96,7 +96,7 @@ export default function TeachersPage() {
                     </td>
                     <td className="p-4">
                       {ct ? (
-                        <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-purple-100 text-purple-700 border-purple-200">
+                        <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-blue-50 text-blue-600 border-blue-200">
                           {ct.sections?.classes?.display_name} - Sec {ct.sections?.name}
                         </span>
                       ) : <span className="text-xs text-slate-400">—</span>}

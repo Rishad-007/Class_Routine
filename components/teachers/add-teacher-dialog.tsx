@@ -196,7 +196,7 @@ export function AddTeacherDialog({ onTeacherAdded, classes, subjects, sections, 
                   <Select value={String(a.subject_id || "")} onValueChange={v => { const u = [...assignments]; u[i] = { ...u[i], subject_id: parseInt(v) }; setAssignments(u) }}>
                     <SelectTrigger><SelectValue placeholder="Select subject" /></SelectTrigger>
                     <SelectContent>{Object.entries(catSubjects).map(([cat, subjs]: any) => (
-                      <SelectGroup key={cat}><SelectLabel className="text-xs text-purple-600">{cat}</SelectLabel>
+                      <SelectGroup key={cat}><SelectLabel className="text-xs text-blue-600">{cat}</SelectLabel>
                         {subjs.map((s: any) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
                       </SelectGroup>
                     ))}</SelectContent>
@@ -211,7 +211,7 @@ export function AddTeacherDialog({ onTeacherAdded, classes, subjects, sections, 
                           type="checkbox"
                           checked={a.class_ids.includes(c.id)}
                           onChange={() => toggleClass(i, c.id)}
-                          className="accent-purple-600 w-4 h-4"
+                          className="accent-blue-600 w-4 h-4"
                         />
                         {c.display_name}
                       </label>
@@ -234,7 +234,7 @@ export function AddTeacherDialog({ onTeacherAdded, classes, subjects, sections, 
                 <Select value={ctSectionId} onValueChange={setCtSectionId}>
                   <SelectTrigger><SelectValue placeholder="Select section" /></SelectTrigger>
                   <SelectContent>{classes.map((cls: any) => (
-                    <SelectGroup key={cls.id}><SelectLabel className="text-xs text-purple-600">{cls.display_name}</SelectLabel>
+                    <SelectGroup key={cls.id}><SelectLabel className="text-xs text-blue-600">{cls.display_name}</SelectLabel>
                       {sections.filter((s: any) => s.class_id === cls.id).map((sec: any) => (
                         <SelectItem key={sec.id} value={String(sec.id)}>{cls.display_name} - Section {sec.name}</SelectItem>
                       ))}

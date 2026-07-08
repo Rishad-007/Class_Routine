@@ -49,36 +49,58 @@ export function RoutineTable({ section, routines, periodsCount, allTeachers, onR
           </tr>
         </thead>
         <tbody>
-          {Array.from({ length: periodsCount }, (_, i) => i + 1).map(period => {
-            const isTiffin = period === 5 && periodsCount >= 5
-            return (
-              <tr key={period}>
-                <td className={`p-3 text-sm font-medium border-b border-slate-100 bg-slate-50/30 ${isTiffin ? "text-orange-500 font-bold" : "text-slate-600"}`}>
-                  {isTiffin ? "Tiffin" : `Period ${period}`}
-                </td>
-                {DAYS.map((_, dayIdx) => {
-                  const routine = getRoutine(dayIdx, period)
-                  const isEditing = editingCell?.day === dayIdx && editingCell?.period === period
-                  return (
-                    <td key={dayIdx} className={`p-2 border-b border-slate-100 ${isTiffin ? "bg-orange-50/50" : routine?.is_class_teacher_period ? "bg-purple-50/30" : ""}`}>
-                      {isTiffin ? <span className="text-xs text-orange-400 italic block text-center">Break</span>
-                      : isEditing ? <TeacherSelectPopover teachers={allTeachers} currentId={routine?.teacher_id || 0} onSelect={tid => handleEdit(dayIdx, period, tid)} onCancel={() => setEditingCell(null)} />
-                      : routine ? (
-                        <div className="group relative">
-                          <button onClick={() => setEditingCell({ day: dayIdx, period })} className="w-full text-left">
-                            <div className="text-sm font-medium text-slate-800">{routine.teachers?.name}</div>
-                            <div className="text-xs text-slate-400 truncate">{routine.subjects?.name}</div>
-                            {routine.is_class_teacher_period && <Badge className="mt-1 bg-purple-100 text-purple-700 border-purple-200 text-[10px] px-1.5 py-0">CT</Badge>}
-                          </button>
-                          <button onClick={() => setEditingCell({ day: dayIdx, period })} className="absolute top-0 right-0 p-1 opacity-0 group-hover:opacity-100"><FiEdit2 size={12} className="text-slate-400" /></button>
-                        </div>
-                      ) : <span className="text-xs text-slate-300 italic">—</span>}
-                    </td>
-                  )
-                })}
-              </tr>
-            )
-          })}
+          {(() => {
+            const displayPeriods: (number | "tiffin")[] = []
+            for (let p = 1; p <= periodsCount; p++) {
+              if (p === 5) {
+                displayPeriods.push("tiffin")
+              } else {
+                displayPeriods.push(p > 5 ? p - 1 : p)
+              }
+            }
+            const toDbPeriod = (dp: number) => dp >= 5 ? dp + 1 : dp
+            return displayPeriods.map(period => {
+              if (period === "tiffin") {
+                return (
+                  <tr key="tiffin">
+                    <td className="p-3 text-sm font-bold text-orange-500 border-b border-slate-100 bg-orange-50/50">Tiffin Break</td>
+                    {DAYS.map((_, dayIdx) => (
+                      <td key={dayIdx} className="p-2 border-b border-slate-100 bg-orange-50/50">
+                        <span className="text-xs text-orange-300 italic block text-center">—</span>
+                      </td>
+                    ))}
+                  </tr>
+                )
+              }
+              const dbPeriod = toDbPeriod(period)
+              return (
+                <tr key={period}>
+                  <td className="p-3 text-sm font-medium text-slate-600 border-b border-slate-100 bg-slate-50/30">
+                    Period {period}
+                  </td>
+                  {DAYS.map((_, dayIdx) => {
+                    const routine = getRoutine(dayIdx, dbPeriod)
+                    const isEditing = editingCell?.day === dayIdx && editingCell?.period === dbPeriod
+                    return (
+                      <td key={dayIdx} className={`p-2 border-b border-slate-100 ${routine?.is_class_teacher_period ? "bg-blue-50/30" : ""}`}>
+                        {isEditing ? <TeacherSelectPopover teachers={allTeachers} currentId={routine?.teacher_id || 0} onSelect={tid => handleEdit(dayIdx, dbPeriod, tid)} onCancel={() => setEditingCell(null)} />
+                        : routine ? (
+                          <div className="group relative">
+                            <button onClick={() => setEditingCell({ day: dayIdx, period: dbPeriod })} className="w-full text-left">
+                              <div className="text-sm font-medium text-slate-800">{routine.teachers?.name}</div>
+                              <div className="text-xs text-slate-400 truncate">{routine.subjects?.name}</div>
+                              {routine.is_class_teacher_period && <Badge className="mt-1 bg-blue-50 text-blue-700 border-blue-200 text-[10px] px-1.5 py-0">CT</Badge>}
+                            </button>
+                            <button onClick={() => setEditingCell({ day: dayIdx, period: dbPeriod })} className="absolute top-0 right-0 p-1 opacity-0 group-hover:opacity-100"><FiEdit2 size={12} className="text-slate-400" /></button>
+                          </div>
+                        ) : <span className="text-xs text-slate-300 italic">—</span>}
+                      </td>
+                    )
+                  })}
+                </tr>
+              )
+            })
+          })()}
         </tbody>
       </table>
     </div>

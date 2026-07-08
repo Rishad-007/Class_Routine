@@ -87,7 +87,7 @@ export default function GeneratePage() {
         <button
           onClick={handleGenerate}
           disabled={generating || !selectedClassId}
-          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-500 px-4 py-2.5 text-sm font-medium text-white shadow-md hover:shadow-lg transition-all disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 hover:shadow-md transition-all disabled:opacity-50"
         >
           <FiRefreshCw className={generating ? "animate-spin" : ""} size={16} />
           {generating ? "Generating..." : "Generate Routine"}
@@ -134,7 +134,7 @@ export default function GeneratePage() {
             <select
               value={selectedClassId || ""}
               onChange={(e) => setSelectedClassId(Number(e.target.value))}
-              className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-purple-400 bg-white"
+              className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-blue-400 bg-white"
             >
               {classes.map((c: any) => (
                 <option key={c.id} value={c.id}>{c.display_name}</option>

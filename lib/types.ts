@@ -62,6 +62,28 @@ export type Routine = {
 export const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"]
 export const DAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu"]
 
+export const PERIOD_START_TIMES: Record<number, string> = {
+  1: "8:30",
+  2: "9:15",
+  3: "10:00",
+  4: "10:45",
+  5: "☕",
+  6: "11:00",
+  7: "11:45",
+}
+
+export const CATEGORY_COLORS: Record<string, string> = {
+  core: "bg-blue-400",
+  science: "bg-teal-400",
+  commerce: "bg-orange-400",
+  humanities: "bg-purple-400",
+  additional: "bg-cyan-400",
+}
+
+export function getCategoryColor(category?: string) {
+  return CATEGORY_COLORS[category || ""] || "bg-slate-300"
+}
+
 export const SUBJECT_CATEGORIES: Record<string, string> = {
   core: "Core Subjects (6-10)",
   science: "Science Group (9-10)",
