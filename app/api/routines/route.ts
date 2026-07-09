@@ -6,8 +6,14 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const sectionId = searchParams.get("section_id")
   const classId = searchParams.get("class_id")
-  let query = supabase.from("routines").select("*, teachers(*), subjects(*)").order("day_of_week").order("period_number")
+  const teacherId = searchParams.get("teacher_id")
+  let query = supabase
+    .from("routines")
+    .select("*, teachers(*), subjects(*), sections!inner(*, classes!inner(*))")
+    .order("day_of_week")
+    .order("period_number")
   if (sectionId) query = query.eq("section_id", sectionId)
+  if (teacherId) query = query.eq("teacher_id", teacherId)
   if (classId) {
     const { data: sections } = await supabase.from("sections").select("id").eq("class_id", classId)
     if (sections && sections.length > 0) {

@@ -1,15 +1,14 @@
 {
-  "/generate/page": "app/generate/page.js",
   "/page": "app/page.js",
-  "/api/teachers/route": "app/api/teachers/route.js",
-  "/api/sections/route": "app/api/sections/route.js",
-  "/api/classes/route": "app/api/classes/route.js",
-  "/api/routines/route": "app/api/routines/route.js",
-  "/api/routines/validate/route": "app/api/routines/validate/route.js",
-  "/api/subjects/route": "app/api/subjects/route.js",
-  "/teachers/page": "app/teachers/page.js",
-  "/api/teacher-subjects/route": "app/api/teacher-subjects/route.js",
-  "/api/class-teachers/route": "app/api/class-teachers/route.js",
+  "/generate/page": "app/generate/page.js",
+  "/classes/page": "app/classes/page.js",
   "/view/page": "app/view/page.js",
-  "/classes/page": "app/classes/page.js"
+  "/api/teachers/route": "app/api/teachers/route.js",
+  "/api/subjects/route": "app/api/subjects/route.js",
+  "/api/sections/route": "app/api/sections/route.js",
+  "/api/teacher-subjects/route": "app/api/teacher-subjects/route.js",
+  "/teachers/page": "app/teachers/page.js",
+  "/api/classes/route": "app/api/classes/route.js",
+  "/api/class-teachers/route": "app/api/class-teachers/route.js",
+  "/api/routines/route": "app/api/routines/route.js"
 }
