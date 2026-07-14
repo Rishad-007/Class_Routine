@@ -2,10 +2,13 @@ import { supabase } from "./supabase"
 import type { Routine } from "./types"
 
 type TeacherBusy = Record<number, Record<number, Record<number, boolean>>>
+type TeacherDayCount = Record<number, Record<number, number>>
 type TeacherRemaining = Record<number, Record<number, number>>
+type TeacherMaxPerDay = Record<number, number>
+type SubjectCombinedGroup = Record<number, string | null>
 type RoutineGrid = Record<number, Record<number, Record<number, { teacher_id: number; subject_id: number; is_ct: boolean } | null>>>
 
-const DAYS = [0, 1, 2, 3, 4] // Sun-Thu
+const DAYS = [0, 1, 2, 3, 4]
 const CLASS_NAMES = ["Six", "Seven", "Eight", "Nine", "Ten"]
 
 export async function generateRoutine(classId: number) {
@@ -46,6 +49,7 @@ export async function generateRoutine(classId: number) {
 
   const teacherRemaining: TeacherRemaining = {}
   const subjectTeacherMap: Record<number, { teacher_id: number; load: number }[]> = {}
+  const teacherMaxPerDay: TeacherMaxPerDay = {}
 
   if (allTeacherSubjects) {
     for (const ts of allTeacherSubjects) {
@@ -63,6 +67,23 @@ export async function generateRoutine(classId: number) {
 
   const subjectIds = new Set((subjects || []).map(s => s.id))
 
+  const subjectCombinedGroup: SubjectCombinedGroup = {}
+  if (subjects) {
+    for (const s of subjects) {
+      subjectCombinedGroup[s.id] = s.combined_group || null
+    }
+  }
+
+  const combinedGroupSubjectIds: Record<string, number[]> = {}
+  if (subjects) {
+    for (const s of subjects) {
+      if (s.combined_group) {
+        if (!combinedGroupSubjectIds[s.combined_group]) combinedGroupSubjectIds[s.combined_group] = []
+        combinedGroupSubjectIds[s.combined_group].push(s.id)
+      }
+    }
+  }
+
   for (const tid of Object.keys(teacherRemaining)) {
     const tidNum = parseInt(tid)
     for (const sid of Object.keys(teacherRemaining[tidNum])) {
@@ -74,6 +95,7 @@ export async function generateRoutine(classId: number) {
   }
 
   const teacherBusy: TeacherBusy = {}
+  const teacherDayCount: TeacherDayCount = {}
   const routineGrid: RoutineGrid = {}
   const sectionDayTeachers: Record<number, Record<number, Set<number>>> = {}
 
@@ -98,12 +120,25 @@ export async function generateRoutine(classId: number) {
     .select("teacher_id, day_of_week, period_number")
     .in("teacher_id", activeTeacherIds)
 
+  const { data: teachersData } = await supabase
+    .from("teachers")
+    .select("id, max_per_day")
+    .in("id", activeTeacherIds)
+
+  if (teachersData) {
+    for (const t of teachersData) {
+      teacherMaxPerDay[t.id] = t.max_per_day ?? 5
+    }
+  }
+
   const MAX_PERIODS = 8
   const BREAK_PERIOD = 5
   for (const tid of activeTeacherIds) {
     teacherBusy[tid] = {}
+    teacherDayCount[tid] = {}
     for (const day of DAYS) {
       teacherBusy[tid][day] = {}
+      teacherDayCount[tid][day] = 0
       for (let period = 1; period <= MAX_PERIODS; period++) {
         teacherBusy[tid][day][period] = false
       }
@@ -114,14 +149,11 @@ export async function generateRoutine(classId: number) {
     for (const r of existingRoutines) {
       if (teacherBusy[r.teacher_id]?.[r.day_of_week]?.[r.period_number] !== undefined) {
         teacherBusy[r.teacher_id][r.day_of_week][r.period_number] = true
+        teacherDayCount[r.teacher_id][r.day_of_week]++
       }
     }
   }
 
-  // Three-tier candidate search:
-  // strict (no same-day in section, no consecutive)
-  // relaxed (allow same-day but no consecutive)
-  // fallback (allow both)
   function findCandidates(
     sectionId: number, day: number, period: number,
     avoidTeacherId?: number, allowSameDay?: boolean
@@ -132,6 +164,9 @@ export async function generateRoutine(classId: number) {
 
     for (const tid of activeTeacherIds) {
       if (teacherBusy[tid]?.[day]?.[period]) continue
+
+      const maxDay = teacherMaxPerDay[tid] ?? 5
+      if ((teacherDayCount[tid]?.[day] ?? 0) >= maxDay) continue
 
       if (!allowSameDay && dayUsedTeachers?.has(tid)) continue
 
@@ -163,11 +198,41 @@ export async function generateRoutine(classId: number) {
       is_ct: assignment.is_ct,
     }
     teacherBusy[assignment.teacher_id][day][period] = true
+    teacherDayCount[assignment.teacher_id][day]++
     sectionDayTeachers[sectionId][day].add(assignment.teacher_id)
     teacherRemaining[assignment.teacher_id][assignment.subject_id]--
     if (teacherRemaining[assignment.teacher_id][assignment.subject_id] <= 0) {
       delete teacherRemaining[assignment.teacher_id][assignment.subject_id]
     }
+  }
+
+  function removeSlot(sectionId: number, day: number, period: number) {
+    const slot = routineGrid[sectionId][day][period]
+    if (!slot) return
+    teacherBusy[slot.teacher_id][day][period] = false
+    teacherDayCount[slot.teacher_id][day]--
+    sectionDayTeachers[sectionId][day].delete(slot.teacher_id)
+    teacherRemaining[slot.teacher_id][slot.subject_id] = (teacherRemaining[slot.teacher_id][slot.subject_id] || 0) + 1
+    routineGrid[sectionId][day][period] = null
+  }
+
+  function swapSlots(sectionId: number, day: number, p1: number, p2: number) {
+    const slot1 = routineGrid[sectionId][day][p1]
+    const slot2 = routineGrid[sectionId][day][p2]
+    if (!slot1 || !slot2) return
+
+    teacherBusy[slot1.teacher_id][day][p1] = false
+    teacherBusy[slot1.teacher_id][day][p2] = true
+    teacherBusy[slot2.teacher_id][day][p2] = false
+    teacherBusy[slot2.teacher_id][day][p1] = true
+
+    routineGrid[sectionId][day][p1] = slot2
+    routineGrid[sectionId][day][p2] = slot1
+
+    sectionDayTeachers[sectionId][day].delete(slot1.teacher_id)
+    sectionDayTeachers[sectionId][day].delete(slot2.teacher_id)
+    sectionDayTeachers[sectionId][day].add(slot1.teacher_id)
+    sectionDayTeachers[sectionId][day].add(slot2.teacher_id)
   }
 
   function pickBestCandidate(
@@ -201,16 +266,20 @@ export async function generateRoutine(classId: number) {
       const subjectId = ctSubjects[0]
       const day = 0
       if (!teacherBusy[ctId]?.[day]?.[1]) {
-        routineGrid[section.id][day][1] = {
-          teacher_id: ctId,
-          subject_id: subjectId,
-          is_ct: true,
-        }
-        teacherBusy[ctId][day][1] = true
-        sectionDayTeachers[section.id][day].add(ctId)
-        teacherRemaining[ctId][subjectId]--
-        if (teacherRemaining[ctId][subjectId] <= 0) {
-          delete teacherRemaining[ctId][subjectId]
+        const maxDay = teacherMaxPerDay[ctId] ?? 5
+        if ((teacherDayCount[ctId]?.[day] ?? 0) < maxDay) {
+          routineGrid[section.id][day][1] = {
+            teacher_id: ctId,
+            subject_id: subjectId,
+            is_ct: true,
+          }
+          teacherBusy[ctId][day][1] = true
+          teacherDayCount[ctId][day]++
+          sectionDayTeachers[section.id][day].add(ctId)
+          teacherRemaining[ctId][subjectId]--
+          if (teacherRemaining[ctId][subjectId] <= 0) {
+            delete teacherRemaining[ctId][subjectId]
+          }
         }
       }
     }
@@ -243,6 +312,78 @@ export async function generateRoutine(classId: number) {
         candidates = findCandidates(section.id, day, period, undefined, true)
         if (candidates.length > 0) {
           assignSlot(section.id, day, period, pickBestCandidate(candidates, period, section.id))
+        }
+      }
+    }
+  }
+
+  // Phase 2b: Combined subject synchronization
+  for (const [groupName, groupSubjectIds] of Object.entries(combinedGroupSubjectIds)) {
+    for (const day of DAYS) {
+      // Find which periods have combined-group subjects, across all sections
+      const periodCounts: Record<number, number> = {}
+      for (const section of sections) {
+        for (let period = 1; period <= periodsCount; period++) {
+          if (period === BREAK_PERIOD) continue
+          const slot = routineGrid[section.id][day][period]
+          if (slot && groupSubjectIds.includes(slot.subject_id)) {
+            periodCounts[period] = (periodCounts[period] || 0) + 1
+          }
+        }
+      }
+
+      if (Object.keys(periodCounts).length === 0) continue
+
+      // Find the most common period
+      let targetPeriod = parseInt(Object.keys(periodCounts)[0])
+      let maxCount = periodCounts[targetPeriod]
+      for (const [periodStr, count] of Object.entries(periodCounts)) {
+        const period = parseInt(periodStr)
+        if (count > maxCount) {
+          maxCount = count
+          targetPeriod = period
+        }
+      }
+
+      // Align each section - move group subject to targetPeriod if possible
+      for (const sec of sections) {
+        let curPeriod: number | null = null
+        for (let period = 1; period <= periodsCount; period++) {
+          if (period === BREAK_PERIOD) continue
+          const slot = routineGrid[sec.id][day][period]
+          if (slot && groupSubjectIds.includes(slot.subject_id)) {
+            if (period === targetPeriod) {
+              curPeriod = null
+              break
+            }
+            curPeriod = period
+            break
+          }
+        }
+
+        if (curPeriod === null) continue
+
+        const targetSlot: any = routineGrid[sec.id][day][targetPeriod]
+        const currentSlot: any = routineGrid[sec.id][day][curPeriod]
+        if (!currentSlot || !targetSlot) continue
+
+        const t1 = currentSlot.teacher_id
+        const t2 = targetSlot.teacher_id
+        if (t1 === t2) continue
+
+        if (teacherBusy[t1]?.[day]?.[targetPeriod]) continue
+        if (teacherBusy[t2]?.[day]?.[curPeriod]) continue
+
+        const maxDay1 = teacherMaxPerDay[t1] ?? 5
+        const maxDay2 = teacherMaxPerDay[t2] ?? 5
+        if ((teacherDayCount[t1]?.[day] ?? 0) >= maxDay1) continue
+        if ((teacherDayCount[t2]?.[day] ?? 0) >= maxDay2) continue
+
+        const targetSubjectGroup = subjectCombinedGroup[targetSlot.subject_id]
+        if (targetSubjectGroup && targetSubjectGroup === groupName) {
+          swapSlots(sec.id, day, curPeriod, targetPeriod)
+        } else if (!targetSubjectGroup) {
+          swapSlots(sec.id, day, curPeriod, targetPeriod)
         }
       }
     }

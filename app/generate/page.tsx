@@ -1,9 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { FiRefreshCw, FiCheckCircle, FiAlertTriangle, FiUsers, FiLayers } from "react-icons/fi"
+import { FiRefreshCw, FiCheckCircle, FiAlertTriangle, FiUsers, FiLayers, FiRepeat } from "react-icons/fi"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { RoutineTable } from "@/components/generate/routine-table"
+import { SwapDialog } from "@/components/generate/swap-dialog"
 import { toast } from "sonner"
 
 const CLASS_NAMES = ["Six", "Seven", "Eight", "Nine", "Ten"]
@@ -21,6 +22,7 @@ export default function GeneratePage() {
   const [error, setError] = useState("")
   const [metrics, setMetrics] = useState<any>(null)
   const [generationMessages, setGenerationMessages] = useState<{ type: "error" | "warning" | "info"; message: string }[]>([])
+  const [swapDialogOpen, setSwapDialogOpen] = useState(false)
 
   const fetchData = async () => {
     setLoading(true)
@@ -160,6 +162,14 @@ export default function GeneratePage() {
             <FiLayers size={16} />
             Generate All
           </button>
+          <button
+            onClick={() => setSwapDialogOpen(true)}
+            disabled={routines.length === 0 || classSections.length === 0}
+            className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-white px-4 py-2.5 text-sm font-medium text-amber-700 shadow-sm hover:bg-amber-50 hover:shadow-md transition-all disabled:opacity-50"
+          >
+            <FiRepeat size={16} />
+            Swap Teachers
+          </button>
         </div>
       </div>
 
@@ -272,6 +282,16 @@ export default function GeneratePage() {
           )}
         </>
       )}
+
+      <SwapDialog
+        open={swapDialogOpen}
+        onOpenChange={setSwapDialogOpen}
+        sections={classSections}
+        routines={routines}
+        allTeachers={teachers}
+        classDisplayName={selectedClass?.display_name || ""}
+        onSwapComplete={() => selectedClassId && fetchRoutines(selectedClassId)}
+      />
     </div>
   )
 }

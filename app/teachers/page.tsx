@@ -199,7 +199,7 @@ export default function TeachersPage() {
                       {ct && <FiStar size={11} className="shrink-0 text-amber-400 fill-amber-400" />}
                       <FiCalendar size={12} className="shrink-0 text-indigo-300 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
-                    <div className="text-[11px] font-mono text-slate-400">{teacher.teacher_id}</div>
+                    <div className="text-[11px] font-mono text-slate-400">{teacher.teacher_id} · max {teacher.max_per_day ?? 5}/day</div>
                   </div>
                 </div>
 

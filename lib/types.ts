@@ -17,6 +17,7 @@ export type Subject = {
   name: string
   category: string
   applicable_classes: number[] | null
+  combined_group: string | null
 }
 
 export type Teacher = {
@@ -24,6 +25,7 @@ export type Teacher = {
   name: string
   teacher_id: string
   photo_url: string | null
+  max_per_day: number
   created_at: string
 }
 
@@ -125,3 +127,16 @@ export const DEFAULT_SUBJECTS: { name: string; category: string; applicable_clas
   { name: "Sanskrit", category: "additional", applicable_classes: [9, 10] },
   { name: "Pali", category: "additional", applicable_classes: [9, 10] },
 ]
+
+export const COMBINED_GROUPS: Record<string, string[]> = {
+  religion: [
+    "Moral and Religious Education (Islam)",
+    "Moral and Religious Education (Hinduism)",
+    "Moral and Religious Education (Christianity)",
+    "Moral and Religious Education (Buddhism)",
+  ],
+  agri_home: [
+    "Agriculture Studies",
+    "Home Science",
+  ],
+}

@@ -27,6 +27,7 @@ export function AddTeacherDialog({ onTeacherAdded, classes, subjects, sections, 
   const [name, setName] = useState("")
   const [teacherId, setTeacherId] = useState("")
   const [photoUrl, setPhotoUrl] = useState("")
+  const [maxPerDay, setMaxPerDay] = useState(5)
   const [isCT, setIsCT] = useState(false)
   const [ctSectionId, setCtSectionId] = useState("")
   const [assignments, setAssignments] = useState<any[]>([])
@@ -37,6 +38,7 @@ export function AddTeacherDialog({ onTeacherAdded, classes, subjects, sections, 
       setName(editingTeacher.name)
       setTeacherId(editingTeacher.teacher_id)
       setPhotoUrl(editingTeacher.photo_url || "")
+      setMaxPerDay(editingTeacher.max_per_day ?? 5)
 
       const mySubjects = teacherSubjects?.filter((ts: any) => ts.teacher_id === editingTeacher.id) || []
       const grouped: Record<string, { subject_id: number; class_load: number; class_ids: number[] }> = {}
@@ -73,6 +75,7 @@ export function AddTeacherDialog({ onTeacherAdded, classes, subjects, sections, 
     setName("")
     setTeacherId("")
     setPhotoUrl("")
+    setMaxPerDay(5)
     setIsCT(false)
     setCtSectionId("")
     setAssignments([])
@@ -120,7 +123,7 @@ export function AddTeacherDialog({ onTeacherAdded, classes, subjects, sections, 
         const res = await fetch(`/api/teachers/${editingTeacher.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: name.trim(), teacher_id: teacherId.trim(), photo_url: photoUrl || null }),
+          body: JSON.stringify({ name: name.trim(), teacher_id: teacherId.trim(), photo_url: photoUrl || null, max_per_day: maxPerDay }),
         })
         if (!res.ok) throw new Error((await res.json()).error || "Failed to update teacher")
 
@@ -147,7 +150,7 @@ export function AddTeacherDialog({ onTeacherAdded, classes, subjects, sections, 
         const res = await fetch("/api/teachers", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: name.trim(), teacher_id: teacherId.trim(), photo_url: photoUrl || null }),
+          body: JSON.stringify({ name: name.trim(), teacher_id: teacherId.trim(), photo_url: photoUrl || null, max_per_day: maxPerDay }),
         })
         if (!res.ok) throw new Error((await res.json()).error || "Failed")
         const teacher = await res.json()
@@ -182,6 +185,7 @@ export function AddTeacherDialog({ onTeacherAdded, classes, subjects, sections, 
           <div><Label>Name *</Label><Input value={name} onChange={e => setName(e.target.value)} placeholder="Full name" /></div>
           <div><Label>Teacher ID *</Label><Input value={teacherId} onChange={e => setTeacherId(e.target.value)} placeholder="e.g., T001" /></div>
           <div><Label>Photo URL (optional)</Label><Input value={photoUrl} onChange={e => setPhotoUrl(e.target.value)} placeholder="https://..." /></div>
+          <div><Label>Max Classes Per Day</Label><Input type="number" min={1} max={8} value={maxPerDay} onChange={e => setMaxPerDay(parseInt(e.target.value) || 5)} /></div>
           <div className="border-t pt-4">
             <div className="flex items-center justify-between mb-4">
               <Label className="text-base font-semibold">Subject Assignments</Label>

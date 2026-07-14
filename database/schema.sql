@@ -27,7 +27,8 @@ CREATE TABLE IF NOT EXISTS subjects (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL UNIQUE,
   category VARCHAR(50) NOT NULL,
-  applicable_classes INTEGER[]
+  applicable_classes INTEGER[],
+  combined_group VARCHAR(50)
 );
 
 -- 4. TEACHERS
@@ -36,6 +37,7 @@ CREATE TABLE IF NOT EXISTS teachers (
   name VARCHAR(255) NOT NULL,
   teacher_id VARCHAR(50) UNIQUE NOT NULL,
   photo_url TEXT,
+  max_per_day INTEGER DEFAULT 5,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -71,6 +73,10 @@ CREATE TABLE IF NOT EXISTS routines (
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(section_id, day_of_week, period_number)
 );
+
+-- MIGRATIONS (for existing databases)
+ALTER TABLE teachers ADD COLUMN IF NOT EXISTS max_per_day INTEGER DEFAULT 5;
+ALTER TABLE subjects ADD COLUMN IF NOT EXISTS combined_group VARCHAR(50);
 
 -- INDEXES
 CREATE INDEX IF NOT EXISTS idx_routines_section ON routines(section_id);
@@ -126,22 +132,22 @@ INSERT INTO classes (name, display_name, periods_count, sort_order) VALUES
 ON CONFLICT (name) DO NOTHING;
 
 -- Core Subjects (6-10)
-INSERT INTO subjects (name, category, applicable_classes) VALUES
-  ('Bangla 1st Paper', 'core', NULL),
-  ('Bangla 2nd Paper (Grammar/Composition)', 'core', NULL),
-  ('English for Today', 'core', NULL),
-  ('English Grammar', 'core', NULL),
-  ('Mathematics', 'core', NULL),
-  ('Science', 'core', NULL),
-  ('Bangladesh and Global Studies (BGS)', 'core', NULL),
-  ('Information and Communication Technology (ICT)', 'core', NULL),
-  ('Physical Education and Health', 'core', NULL),
-  ('Arts and Crafts / Fine Arts', 'core', NULL),
-  ('Moral and Religious Education (Islam)', 'core', NULL),
-  ('Moral and Religious Education (Hinduism)', 'core', NULL),
-  ('Moral and Religious Education (Christianity)', 'core', NULL),
-  ('Moral and Religious Education (Buddhism)', 'core', NULL),
-  ('Work and Life-Oriented Education', 'core', NULL)
+INSERT INTO subjects (name, category, applicable_classes, combined_group) VALUES
+  ('Bangla 1st Paper', 'core', NULL, NULL),
+  ('Bangla 2nd Paper (Grammar/Composition)', 'core', NULL, NULL),
+  ('English for Today', 'core', NULL, NULL),
+  ('English Grammar', 'core', NULL, NULL),
+  ('Mathematics', 'core', NULL, NULL),
+  ('Science', 'core', NULL, NULL),
+  ('Bangladesh and Global Studies (BGS)', 'core', NULL, NULL),
+  ('Information and Communication Technology (ICT)', 'core', NULL, NULL),
+  ('Physical Education and Health', 'core', NULL, NULL),
+  ('Arts and Crafts / Fine Arts', 'core', NULL, NULL),
+  ('Moral and Religious Education (Islam)', 'core', NULL, 'religion'),
+  ('Moral and Religious Education (Hinduism)', 'core', NULL, 'religion'),
+  ('Moral and Religious Education (Christianity)', 'core', NULL, 'religion'),
+  ('Moral and Religious Education (Buddhism)', 'core', NULL, 'religion'),
+  ('Work and Life-Oriented Education', 'core', NULL, NULL)
 ON CONFLICT (name) DO NOTHING;
 
 -- Science Group (9-10)
@@ -168,10 +174,10 @@ INSERT INTO subjects (name, category, applicable_classes) VALUES
 ON CONFLICT (name) DO NOTHING;
 
 -- Additional Electives
-INSERT INTO subjects (name, category, applicable_classes) VALUES
-  ('Agriculture Studies', 'additional', ARRAY[9, 10]),
-  ('Home Science', 'additional', ARRAY[9, 10]),
-  ('Arabic', 'additional', ARRAY[9, 10]),
-  ('Sanskrit', 'additional', ARRAY[9, 10]),
-  ('Pali', 'additional', ARRAY[9, 10])
+INSERT INTO subjects (name, category, applicable_classes, combined_group) VALUES
+  ('Agriculture Studies', 'additional', ARRAY[9, 10], 'agri_home'),
+  ('Home Science', 'additional', ARRAY[9, 10], 'agri_home'),
+  ('Arabic', 'additional', ARRAY[9, 10], NULL),
+  ('Sanskrit', 'additional', ARRAY[9, 10], NULL),
+  ('Pali', 'additional', ARRAY[9, 10], NULL)
 ON CONFLICT (name) DO NOTHING;
